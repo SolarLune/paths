@@ -1,11 +1,13 @@
 
 # paths
 
+![paths](https://user-images.githubusercontent.com/4733521/48970683-21882880-efc4-11e8-9b60-670f46c6fd77.gif)
+
 [GoDocs](https://godoc.org/github.com/SolarLune/paths)
 
 ## What is paths?
 
-paths is a pathfinding library written in Golang created mainly for video games. Its main feature is simple shortest-cost path finding.
+paths is a pathfinding library written in Golang created mainly for video games. Its main feature is simple best-first and shortest-cost path finding.
 
 ## Why is it called that?
 
@@ -23,7 +25,7 @@ Just go get it and import it in your game application.
 
 ## How do I use it?
 
-paths is based around defining a Grid, which defines a series of Cells. Each Cell occupies a single X and Y position in space, and has a couple of properties that influence pathfinding, which are Cost and Walkability. If a Cell isn't walkable, then it is considered an obstacle that paths circumvent. All Cells default to a Cost of 1, but that can be changed as necessary. If a Cell has a higher Cost, then path finding will try not to generate a path with that Cell. 
+paths is based around defining a Grid, which consists of a series of Cells. Each Cell occupies a single X and Y position in space, and has a couple of properties that influence pathfinding, which are Cost and Walkability. If a Cell isn't walkable, then it is considered an obstacle that paths created using the Grid must circumvent. All Cells default to a Cost of 1, but that can be changed as necessary. If a Cell has a higher Cost, then path finding will generally use that Cell later when creating a Path. This means that a Cell's cost has a direct link to how "desirable" the Cell is when generating a path. 
 
 ```go
 import "github.com/SolarLune/paths"
