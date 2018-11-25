@@ -124,8 +124,8 @@ func (world *World1) Create() {
 
 	world.GameMap = paths.NewGridFromStringArrays(layout)
 
-	spawn := world.GameMap.GetCellsByCharacter('f')[0]
-	for _, cell := range world.GameMap.GetCellsByCharacter('x') {
+	spawn := world.GameMap.GetCellsByRune('f')[0]
+	for _, cell := range world.GameMap.GetCellsByRune('x') {
 		cell.Walkable = false
 	}
 	world.PathDrawer = NewPathDrawer(spawn.X*16, spawn.Y*16, world)
