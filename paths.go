@@ -71,33 +71,22 @@ func (m *Grid) Width() int {
 	return len(m.Data[0])
 }
 
-// GetCellsByRune returns a slice of pointers to Cells that all have the character provided.
-func (m *Grid) GetCellsByRune(char rune) []*Cell {
+// GetCellsByCharacter returns a slice of pointers to Cells that all have the character provided.
+func (m *Grid) GetCellsByCharacter(char rune) []*Cell {
 
 	cells := make([]*Cell, 0)
 
 	for y := 0; y < m.Height(); y++ {
+
 		for x := 0; x < m.Width(); x++ {
+
 			c := m.Get(x, y)
 			if c.Character == char {
 				cells = append(cells, c)
 			}
+
 		}
-	}
 
-	return cells
-
-}
-
-// GetCells returns all of the cells in the Grid in a single slice.
-func (m *Grid) GetCells() []*Cell {
-
-	cells := make([]*Cell, 0)
-
-	for y := 0; y < m.Height(); y++ {
-		for x := 0; x < m.Width(); x++ {
-			cells = append(cells, m.Get(x, y))
-		}
 	}
 
 	return cells
