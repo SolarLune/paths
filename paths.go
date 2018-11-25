@@ -21,7 +21,7 @@ type Cell struct {
 }
 
 func (cell Cell) String() string {
-	return fmt.Sprintf("X:%d Y:%d Cost:%d Walkable:%t Character:%s", cell.X, cell.Y, cell.Cost, cell.Walkable, cell.Character)
+	return fmt.Sprintf("X:%d Y:%d Cost:%d Walkable:%t Character:%s(%d)", cell.X, cell.Y, cell.Cost, cell.Walkable, string(cell.Character), int(cell.Character))
 }
 
 // Grid represents a "map" composed of individual Cells at each point in the map.
@@ -116,7 +116,7 @@ func (m *Grid) GetCellsByCost(cost int) []*Cell {
 }
 
 // GetPath returns a Path, from the starting Cell to the destination Cell. diagonals controls whether diagonal Cells are
-// considered when creating the Path.
+// considered when creating the Path. Note that the Cells in these Paths are pointers to the original Cells in the source Grid.
 func (m *Grid) GetPath(start, dest *Cell, diagonals bool) Path {
 
 	type Node struct {
