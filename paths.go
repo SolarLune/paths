@@ -146,7 +146,7 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) Path {
 		return path
 	}
 
-	for true {
+	for {
 
 		// If the list of openNodes (nodes to check) is at 0, then we've checked all Nodes, and so the function can quit.
 		if len(openNodes) == 0 {
@@ -260,7 +260,23 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) Path {
 
 }
 
-// NewGridFromStringArrays creates a Grid map from the array of strings provided. Each string becomes a row of Cells, each
+// DataAsRuneArrays returns a 2D array of runes for each Cell in the Grid. The first axis is the Y axis.
+func (m *Grid) DataAsRuneArrays() [][]rune {
+
+	runes := [][]rune{}
+
+	for y := 0; y < m.Height(); y++ {
+		runes = append(runes, []rune{})
+		for x := 0; x < m.Width(); x++ {
+			runes[y] = append(runes[y], m.Data[y][x].Character)
+		}
+	}
+
+	return runes
+
+}
+
+// NewGridFromStringArrays creates a Grid map from a 1D array of strings. Each string becomes a row of Cells, each
 // with one rune as its character.
 func NewGridFromStringArrays(arrays []string) *Grid {
 
@@ -271,6 +287,23 @@ func NewGridFromStringArrays(arrays []string) *Grid {
 		stringLine := []rune(arrays[y])
 		for x := 0; x < len(arrays[y]); x++ {
 			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Character: stringLine[x]})
+		}
+	}
+
+	return m
+
+}
+
+// NewGridFromRuneArrays creates a Grid map from a 2D array of runes. Each individual Rune becomes a Cell in the resulting
+// Grid.
+func NewGridFromRuneArrays(arrays [][]rune) *Grid {
+
+	m := &Grid{}
+
+	for y := 0; y < len(arrays); y++ {
+		m.Data = append(m.Data, []*Cell{})
+		for x := 0; x < len(arrays[y]); x++ {
+			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Character: arrays[y][x]})
 		}
 	}
 
