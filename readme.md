@@ -51,15 +51,15 @@ func Init() {
         "xxxxxxxxxx",
     }
 
-    secondMap := paths.NewGridFromStringArray(layout)
+    secondMap := paths.NewGridFromStringArrays(layout)
 
-    // After creating the Grid, you can edit it using the Grid's functions.
-    // Note that here, we're using 'x' to get the rune for the lowercase x character, not a string ("x").
-    for _, cell := range secondMap.GetCellsByCharacter('x') {
+    // After creating the Grid, you can edit it using the Grid's functions. Note that here, we're using 'x' 
+    // to get Cells that have the rune for the lowercase x character 'x', not the string "x".
+    for _, cell := range secondMap.GetCellsByRune('x') {
         cell.Walkable = false
     }
 
-    for _, goop := range secondMap.GetCellsByCharacter('g') {
+    for _, goop := range secondMap.GetCellsByRune('g') {
         goop.Cost = 5
     }
 
