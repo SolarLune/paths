@@ -14,11 +14,12 @@ type PathDrawer struct {
 	TargetX, TargetY int
 	MouseCX, MouseCY int
 	mouseClicked     bool
-	Path             paths.Path
+	Path             *paths.Path
 }
 
 func NewPathDrawer(x, y int, world *World1) *PathDrawer {
 	f := &PathDrawer{StartX: x, StartY: y, World: world}
+	f.Path = &paths.Path{}
 	return f
 }
 
@@ -73,20 +74,29 @@ func (pd *PathDrawer) Update() {
 }
 
 func (pd *PathDrawer) Draw() {
-	// renderer.FillRect(&sdl.Rect{int32(pd.StartX), int32(pd.StartY), 16, 16})
 
 	sc := pd.World.GameMap.Get(pd.StartX/16, pd.StartY/16)
 	tc := pd.World.GameMap.Get(pd.TargetX/16, pd.TargetY/16)
 
 	if tc != nil {
 
-		pd.Path = pd.World.GameMap.GetPath(sc, tc, false)
+		newPath := pd.World.GameMap.GetPath(sc, tc, false)
+		if !newPath.Same(pd.Path) {
+			pd.Path = newPath
+		}
 
-		if len(pd.Path) > 0 { // It's a valid path
-			for i, c := range pd.Path {
+		if pd.Path.Valid() {
+			for i, c := range pd.Path.Cells {
 				renderer.SetDrawColor(255-uint8(i*8%100), 255-uint8(i*8%100), 0, 255)
 				renderer.FillRect(&sdl.Rect{int32(c.X * 16), int32(c.Y * 16), 16, 16})
 			}
+
+			if pd.Path.AtEnd() {
+				pd.Path.Restart()
+			}
+			c := pd.Path.Next()
+			renderer.SetDrawColor(255, 0, 0, 255)
+			renderer.FillRect(&sdl.Rect{int32(c.X * 16), int32(c.Y * 16), 16, 16})
 		}
 
 	}
@@ -110,14 +120,14 @@ func (world *World1) Create() {
 		"x xxxxxxxxxxxx x               x",
 		"x            x x               x",
 		"x x xxxxxxxx x x               x",
-		"x x x x    x x x               x",
+		"x x x x    x x x       xxxx    x",
 		"x x x   xx x x x               x",
-		"x x xxxxxx x x x               x",
+		"x x xxxxxx x x x        xx     x",
 		"x xxx      x x x               x",
-		"x              xxxxxxxxxxxxxxxxx",
+		"x              xxxxxxxxx  xxxxxx",
 		"x xxx      xxx x                ",
 		"x            x x                ",
-		"x xxxxxxxxxx x x                ",
+		"x xxxxxxxxxx x x xxxxxxxxxxxx   ",
 		"x              x                ",
 		"xxxxxxxxxxxxxxxx                ",
 	}
@@ -165,7 +175,7 @@ func (world *World1) Draw() {
 		}
 
 		pathInfo := "Path cost: No path"
-		if len(world.PathDrawer.Path) > 0 {
+		if world.PathDrawer.Path.Valid() {
 			pathInfo = fmt.Sprintf("Path cost: %d", world.PathDrawer.Path.TotalCost())
 		}
 

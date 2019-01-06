@@ -128,7 +128,7 @@ func (m *Grid) GetCellsByCost(cost int) []*Cell {
 
 // GetPath returns a Path, from the starting Cell to the destination Cell. diagonals controls whether diagonal Cells are
 // considered when creating the Path. Note that the Cells in these Paths are pointers to the original Cells in the source Grid.
-func (m *Grid) GetPath(start, dest *Cell, diagonals bool) Path {
+func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
 
 	type Node struct {
 		Cell   *Cell
@@ -151,7 +151,7 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) Path {
 
 	}
 
-	path := Path{}
+	path := &Path{}
 
 	if !dest.Walkable {
 		return path
@@ -173,7 +173,7 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) Path {
 
 			var t = node
 			for true {
-				path = append(path, t.Cell)
+				path.Cells = append(path.Cells, t.Cell)
 				t = t.Parent
 				if t == nil {
 					break
@@ -322,14 +322,23 @@ func NewGridFromRuneArrays(arrays [][]rune) *Grid {
 
 }
 
-// A Path is a slice of pointers to Cells.
-type Path []*Cell
+// A Path is a struct that represents a path, or sequence of Cells from point A to point B. The Cells list is the list of Cells contained in the Path,
+// and the CurrentIndex value represents the current step on the Path. Using Path.Next() and Path.Prev() advances and walks back the Path by one step.
+type Path struct {
+	Cells        []*Cell
+	CurrentIndex int
+}
 
-// TotalCost returns the total cost of the Path.
-func (p Path) TotalCost() int {
+// Valid returns if the path is valid (has a length greater than 0).
+func (p *Path) Valid() bool {
+	return len(p.Cells) > 0
+}
+
+// TotalCost returns the total cost of the Path (i.e. is the sum of all of the Cells in the Path).
+func (p *Path) TotalCost() int {
 
 	cost := 0
-	for _, cell := range p {
+	for _, cell := range p.Cells {
 		cost += cell.Cost
 	}
 	return cost
@@ -339,12 +348,74 @@ func (p Path) TotalCost() int {
 // Reverse reverses the Path.
 func (p *Path) Reverse() {
 
-	np := Path{}
+	np := []*Cell{}
 
-	for c := len(*p) - 1; c >= 0; c-- {
-		np = append(np, (*p)[c])
+	for c := len(p.Cells) - 1; c >= 0; c-- {
+		np = append(np, p.Cells[c])
 	}
 
-	*p = np
+	p.Cells = np
+
+	// p.Restart()
+
+}
+
+// Restart restarts the Path, so that calling path.Current() will now return the first Cell in the Path.
+func (p *Path) Restart() {
+	p.CurrentIndex = 0
+}
+
+// Current returns the current Cell in the Path.
+func (p *Path) Current() *Cell {
+	return p.Cells[p.CurrentIndex]
+}
+
+// Next advances the path by one cell and returns the current cell in the path (i.e. the next cell).
+func (p *Path) Next() *Cell {
+
+	p.CurrentIndex++
+	if p.CurrentIndex >= len(p.Cells) {
+		p.CurrentIndex = len(p.Cells) - 1
+	}
+
+	return p.Cells[p.CurrentIndex]
+
+}
+
+// Prev runs the path backwards by one cell and returns the current cell in the path (i.e. the previous cell).
+func (p *Path) Prev() *Cell {
+
+	p.CurrentIndex--
+	if p.CurrentIndex < 0 {
+		p.CurrentIndex = 0
+	}
+
+	return p.Cells[p.CurrentIndex]
+}
+
+// AtEnd returns if the current Cell in the Path is the last one.
+func (p *Path) AtEnd() bool {
+	return p.Valid() && p.CurrentIndex == len(p.Cells)-1
+}
+
+// AtBeginning returns if the current Cell in the Path is the first one.
+func (p *Path) AtBeginning() bool {
+	return p.Valid() && p.CurrentIndex == 0
+}
+
+// Same returns if the Path shares the exact same cells as the other specified Path.
+func (p *Path) Same(otherPath *Path) bool {
+
+	if len(p.Cells) != len(otherPath.Cells) {
+		return false
+	}
+
+	for i := range p.Cells {
+		if len(otherPath.Cells) <= i || p.Cells[i] != otherPath.Cells[i] {
+			return false
+		}
+	}
+
+	return true
 
 }
