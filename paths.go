@@ -11,17 +11,17 @@ import (
 )
 
 // A Cell represents a point on a Grid map. It has an X and Y value for the position, a Cost, which influences which Cells are
-// ideal for paths, Walkable, which indicates if the tile can be walked on or should be avoided, and a Character, which indicates
+// ideal for paths, Walkable, which indicates if the tile can be walked on or should be avoided, and a Rune, which indicates
 // which rune character the Cell is represented by.
 type Cell struct {
-	X, Y      int
-	Cost      int
-	Walkable  bool
-	Character rune
+	X, Y     int
+	Cost     int
+	Walkable bool
+	Rune     rune
 }
 
 func (cell Cell) String() string {
-	return fmt.Sprintf("X:%d Y:%d Cost:%d Walkable:%t Character:%s(%d)", cell.X, cell.Y, cell.Cost, cell.Walkable, string(cell.Character), int(cell.Character))
+	return fmt.Sprintf("X:%d Y:%d Cost:%d Walkable:%t Rune:%s(%d)", cell.X, cell.Y, cell.Cost, cell.Walkable, string(cell.Rune), int(cell.Rune))
 }
 
 // Grid represents a "map" composed of individual Cells at each point in the map.
@@ -46,7 +46,7 @@ func (m *Grid) DataToString() string {
 	s := ""
 	for y := 0; y < m.Height(); y++ {
 		for x := 0; x < m.Width(); x++ {
-			s += string(m.Data[y][x].Character) + " "
+			s += string(m.Data[y][x].Rune) + " "
 		}
 		s += "\n"
 	}
@@ -71,15 +71,15 @@ func (m *Grid) Width() int {
 	return len(m.Data[0])
 }
 
-// GetCellsByRune returns a slice of pointers to Cells that all have the character provided.
-func (m *Grid) GetCellsByRune(char rune) []*Cell {
+// CellsByRune returns a slice of pointers to Cells that all have the character provided.
+func (m *Grid) CellsByRune(char rune) []*Cell {
 
 	cells := make([]*Cell, 0)
 
 	for y := 0; y < m.Height(); y++ {
 		for x := 0; x < m.Width(); x++ {
 			c := m.Get(x, y)
-			if c.Character == char {
+			if c.Rune == char {
 				cells = append(cells, c)
 			}
 		}
@@ -89,8 +89,8 @@ func (m *Grid) GetCellsByRune(char rune) []*Cell {
 
 }
 
-// GetCells returns a slice of pointers to all Cells contained in the Grid's 2D Data array.
-func (m *Grid) GetCells(char rune) []*Cell {
+// AllCells returns a single slice of pointers to all Cells contained in the Grid's 2D Data array.
+func (m *Grid) AllCells() []*Cell {
 
 	cells := make([]*Cell, 0)
 
@@ -104,8 +104,8 @@ func (m *Grid) GetCells(char rune) []*Cell {
 
 }
 
-// GetCellsByCost returns a slice of pointers to Cells that all have the Cost value provided.
-func (m *Grid) GetCellsByCost(cost int) []*Cell {
+// CellsByCost returns a slice of pointers to Cells that all have the Cost value provided.
+func (m *Grid) CellsByCost(cost int) []*Cell {
 
 	cells := make([]*Cell, 0)
 
@@ -123,6 +123,60 @@ func (m *Grid) GetCellsByCost(cost int) []*Cell {
 	}
 
 	return cells
+
+}
+
+// CellsByWalkable returns a slice of pointers to Cells that all have the Cost value provided.
+func (m *Grid) CellsByWalkable(walkable bool) []*Cell {
+
+	cells := make([]*Cell, 0)
+
+	for y := 0; y < m.Height(); y++ {
+
+		for x := 0; x < m.Width(); x++ {
+
+			c := m.Get(x, y)
+			if c.Walkable == walkable {
+				cells = append(cells, c)
+			}
+
+		}
+
+	}
+
+	return cells
+
+}
+
+// SetWalkable sets walkability across all cells in the Grid with the specified rune.
+func (m *Grid) SetWalkable(char rune, walkable bool) {
+
+	for y := 0; y < m.Height(); y++ {
+
+		for x := 0; x < m.Width(); x++ {
+			cell := m.Get(x, y)
+			if cell.Rune == char {
+				cell.Walkable = walkable
+			}
+		}
+
+	}
+
+}
+
+// SetCost sets the movement cost across all cells in the Grid with the specified rune.
+func (m *Grid) SetCost(char rune, cost int) {
+
+	for y := 0; y < m.Height(); y++ {
+
+		for x := 0; x < m.Width(); x++ {
+			cell := m.Get(x, y)
+			if cell.Rune == char {
+				cell.Cost = cost
+			}
+		}
+
+	}
 
 }
 
@@ -271,6 +325,22 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
 
 }
 
+// DataAsStringArray returns a 2D array of runes for each Cell in the Grid. The first axis is the Y axis.
+func (m *Grid) DataAsStringArray() []string {
+
+	data := []string{}
+
+	for y := 0; y < m.Height(); y++ {
+		data = append(data, "")
+		for x := 0; x < m.Width(); x++ {
+			data[y] += string(m.Data[y][x].Rune)
+		}
+	}
+
+	return data
+
+}
+
 // DataAsRuneArrays returns a 2D array of runes for each Cell in the Grid. The first axis is the Y axis.
 func (m *Grid) DataAsRuneArrays() [][]rune {
 
@@ -279,7 +349,7 @@ func (m *Grid) DataAsRuneArrays() [][]rune {
 	for y := 0; y < m.Height(); y++ {
 		runes = append(runes, []rune{})
 		for x := 0; x < m.Width(); x++ {
-			runes[y] = append(runes[y], m.Data[y][x].Character)
+			runes[y] = append(runes[y], m.Data[y][x].Rune)
 		}
 	}
 
@@ -297,7 +367,7 @@ func NewGridFromStringArrays(arrays []string) *Grid {
 		m.Data = append(m.Data, []*Cell{})
 		stringLine := []rune(arrays[y])
 		for x := 0; x < len(arrays[y]); x++ {
-			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Character: stringLine[x]})
+			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Rune: stringLine[x]})
 		}
 	}
 
@@ -314,7 +384,7 @@ func NewGridFromRuneArrays(arrays [][]rune) *Grid {
 	for y := 0; y < len(arrays); y++ {
 		m.Data = append(m.Data, []*Cell{})
 		for x := 0; x < len(arrays[y]); x++ {
-			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Character: arrays[y][x]})
+			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Rune: arrays[y][x]})
 		}
 	}
 
@@ -332,6 +402,22 @@ type Path struct {
 // Valid returns if the path is valid (has a length greater than 0).
 func (p *Path) Valid() bool {
 	return len(p.Cells) > 0
+}
+
+// Start returns the starting Cell of the Path (or nil, if the Path isn't valid).
+func (p *Path) Start() *Cell {
+	if p.Valid() {
+		return p.Cells[0]
+	}
+	return nil
+}
+
+// End returns the ending Cell of the Path (or nil, if the Path isn't valid).
+func (p *Path) End() *Cell {
+	if p.Valid() {
+		return p.Cells[len(p.Cells)-1]
+	}
+	return nil
 }
 
 // TotalCost returns the total cost of the Path (i.e. is the sum of all of the Cells in the Path).

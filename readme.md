@@ -55,10 +55,9 @@ func Init() {
 
     // After creating the Grid, you can edit it using the Grid's functions. Note that here, we're using 'x' 
     // to get Cells that have the rune for the lowercase x character 'x', not the string "x".
-    for _, cell := range secondMap.GetCellsByRune('x') {
-        cell.Walkable = false
-    }
+    firstMap.SetWalkable('x', false)
 
+    // You can also loop through them by using the `GetCells` functions thusly...
     for _, goop := range secondMap.GetCellsByRune('g') {
         goop.Cost = 5
     }
