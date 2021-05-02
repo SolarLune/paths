@@ -3,7 +3,7 @@
 
 ![paths](https://user-images.githubusercontent.com/4733521/48970683-21882880-efc4-11e8-9b60-670f46c6fd77.gif)
 
-[GoDocs](https://godoc.org/github.com/SolarLune/paths)
+[GoDocs](https://pkg.go.dev/github.com/SolarLune/paths?tab=doc)
 
 ## What is paths?
 
@@ -19,25 +19,26 @@ Because I needed to do pathfinding for a game and couldn't really find any pre-m
 
 ## How do I install it?
 
-Just go get it and import it in your game application.
+Just go get it:
 
 `go get github.com/SolarLune/paths`
 
 ## How do I use it?
 
-paths is based around defining a Grid, which consists of a series of Cells. Each Cell occupies a single X and Y position in space, and has a couple of properties that influence pathfinding, which are Cost and Walkability. If a Cell isn't walkable, then it is considered an obstacle that paths created using the Grid must circumvent. All Cells default to a Cost of 1, but that can be changed as necessary. If a Cell has a higher Cost, then path finding will generally use that Cell later when creating a Path. This means that a Cell's cost has a direct link to how "desirable" the Cell is when generating a path. 
+paths is based around defining a Grid, which consists of a rectangular series of Cells. Each Cell occupies a single X and Y position in space, and has a couple of properties that influence pathfinding, which are Cost and Walkability. If a Cell isn't walkable, then it is considered an obstacle that paths generated must circumvent. All Cells default to a Cost of 1; pathfinding will prioritize lower-cost Cells.
 
 ```go
 import "github.com/SolarLune/paths"
 
 func Init() {
 
-    // This line creates a new Grid, comprised of Cells. The size is 10x10. By default, all Cells are 
-    // walkable and have a cost of 1, and a blank character of ' '.
-    firstMap = paths.NewGrid(10, 10)
+    // This line creates a new Grid, comprised (internally) of Cells. The size is 10x10. Each Cell's 
+    // "world" size is 16x16. By default, all Cells are walkable, have a cost of 1, and a blank rune 
+    // of ' ' associated with them.
+    firstMap = paths.NewGrid(10, 10, 16, 16)
     
-    // You can also create the Grid from an array of strings (which are interpreted as arrays of runes), if 
-    // you already have it:
+    // You can also create the Grid from an array of strings (which are interpreted as arrays of runes), 
+    // if you already have it:
     layout := []string{
         "xxxxxxxxxx",
         "x        x",
@@ -51,7 +52,7 @@ func Init() {
         "xxxxxxxxxx",
     }
 
-    secondMap := paths.NewGridFromStringArrays(layout)
+    secondMap := paths.NewGridFromStringArrays(layout, 16, 16)
 
     // After creating the Grid, you can edit it using the Grid's functions. Note that here, we're using 'x' 
     // to get Cells that have the rune for the lowercase x character 'x', not the string "x".
@@ -62,9 +63,15 @@ func Init() {
         goop.Cost = 5
     }
 
-    // This gets a new Path (a slice of Cells) from the starting Cell to the destination Cell. If the path's length
-    // is greater than 0, then it was successful.
-    path := GameMap.GetPath(GameMap.Get(1, 1), GameMap.Get(6, 3))
+    // This gets a new Path from the Cell occupied by a starting position [24, 21], to another [99, 78]. The last boolean argument,
+    // false, indicates whether moving diagonally is fine when creating the Path.
+    firstPath := GameMap.GetPath(24, 21, 99, 78, false)
+
+    // You can also get a path using references to the Cells directly.
+    secondPath := GameMap.GetPathFromCell(GameMap.Get(1, 1), GameMap.Get(6, 3), false)
+
+    // After that, you can use Path.Current() and Path.Next() to get the current and next Cells on the Path. When you determine that 
+    // the pathfinding agent has reached that Cell, you can kick the Path forward with path.Advance().
 
     // And that's it!
 
@@ -75,7 +82,7 @@ func Init() {
 
 And that's about it! If you want to see more info or examples, feel free to examine the main.go and world.go tests to see how the test is set up.
 
-[You can check out the GoDoc link here, as well.](https://godoc.org/github.com/SolarLune/paths)
+[You can check out the GoDoc link here, as well.](https://pkg.go.dev/github.com/SolarLune/paths?tab=doc)
 
 You can also run the example by installing SDL with the instructions [here](https://github.com/veandco/go-sdl2#requirements)
 and then:

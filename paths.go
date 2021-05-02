@@ -7,6 +7,7 @@ package paths
 
 import (
 	"fmt"
+	"math"
 	"sort"
 )
 
@@ -15,30 +16,75 @@ import (
 // which rune character the Cell is represented by.
 type Cell struct {
 	X, Y     int
-	Cost     int
+	Cost     float64
 	Walkable bool
 	Rune     rune
 }
 
 func (cell Cell) String() string {
-	return fmt.Sprintf("X:%d Y:%d Cost:%d Walkable:%t Rune:%s(%d)", cell.X, cell.Y, cell.Cost, cell.Walkable, string(cell.Rune), int(cell.Rune))
+	return fmt.Sprintf("X:%d Y:%d Cost:%f Walkable:%t Rune:%s(%d)", cell.X, cell.Y, cell.Cost, cell.Walkable, string(cell.Rune), int(cell.Rune))
 }
 
 // Grid represents a "map" composed of individual Cells at each point in the map.
+// Data is a 2D array of Cells.
+// CellWidth and CellHeight indicate the size of Cells for Cell Position <-> World Position translation.
 type Grid struct {
-	Data [][]*Cell
+	Data                  [][]*Cell
+	CellWidth, CellHeight int
 }
 
-// NewGrid returns a new Grid of width x height size.
-func NewGrid(width, height int) *Grid {
-	m := &Grid{}
-	for y := 0; y < height; y++ {
+// NewGrid returns a new Grid of (gridWidth x gridHeight) size. cellWidth and cellHeight changes the size of each Cell in the Grid.
+// This is used to translate world position to Cell positions (i.e. the Cell position [2, 5] with a CellWidth and CellHeight of
+// [16, 16] would be the world positon [32, 80]).
+func NewGrid(gridWidth, gridHeight, cellWidth, cellHeight int) *Grid {
+
+	m := &Grid{CellWidth: cellWidth, CellHeight: cellHeight}
+
+	for y := 0; y < gridHeight; y++ {
 		m.Data = append(m.Data, []*Cell{})
-		for x := 0; x < width; x++ {
+		for x := 0; x < gridWidth; x++ {
 			m.Data[y] = append(m.Data[y], &Cell{x, y, 1, true, ' '})
 		}
 	}
 	return m
+}
+
+// NewGridFromStringArrays creates a Grid map from a 1D array of strings. Each string becomes a row of Cells, each
+// with one rune as its character. cellWidth and cellHeight changes the size of each Cell in the Grid. This is used to
+// translate world position to Cell positions (i.e. the Cell position [2, 5] with a CellWidth and CellHeight of
+// [16, 16] would be the world positon [32, 80]).
+func NewGridFromStringArrays(arrays []string, cellWidth, cellHeight int) *Grid {
+
+	m := &Grid{CellWidth: cellWidth, CellHeight: cellHeight}
+
+	for y := 0; y < len(arrays); y++ {
+		m.Data = append(m.Data, []*Cell{})
+		stringLine := []rune(arrays[y])
+		for x := 0; x < len(arrays[y]); x++ {
+			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Rune: stringLine[x]})
+		}
+	}
+
+	return m
+
+}
+
+// NewGridFromRuneArrays creates a Grid map from a 2D array of runes. Each individual Rune becomes a Cell in the resulting
+// Grid. cellWidth and cellHeight changes the size of each Cell in the Grid. This is used to translate world position to Cell
+// positions (i.e. the Cell position [2, 5] with a CellWidth and CellHeight of [16, 16] would be the world positon [32, 80]).
+func NewGridFromRuneArrays(arrays [][]rune, cellWidth, cellHeight int) *Grid {
+
+	m := &Grid{CellWidth: cellWidth, CellHeight: cellHeight}
+
+	for y := 0; y < len(arrays); y++ {
+		m.Data = append(m.Data, []*Cell{})
+		for x := 0; x < len(arrays[y]); x++ {
+			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Rune: arrays[y][x]})
+		}
+	}
+
+	return m
+
 }
 
 // DataToString returns a string, used to easily identify the Grid map.
@@ -105,7 +151,7 @@ func (m *Grid) AllCells() []*Cell {
 }
 
 // CellsByCost returns a slice of pointers to Cells that all have the Cost value provided.
-func (m *Grid) CellsByCost(cost int) []*Cell {
+func (m *Grid) CellsByCost(cost float64) []*Cell {
 
 	cells := make([]*Cell, 0)
 
@@ -165,7 +211,7 @@ func (m *Grid) SetWalkable(char rune, walkable bool) {
 }
 
 // SetCost sets the movement cost across all cells in the Grid with the specified rune.
-func (m *Grid) SetCost(char rune, cost int) {
+func (m *Grid) SetCost(char rune, cost float64) {
 
 	for y := 0; y < m.Height(); y++ {
 
@@ -180,14 +226,29 @@ func (m *Grid) SetCost(char rune, cost int) {
 
 }
 
-// GetPath returns a Path, from the starting Cell to the destination Cell. diagonals controls whether diagonal Cells are
-// considered when creating the Path. Note that the Cells in these Paths are pointers to the original Cells in the source Grid.
-func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
+// GridToWorld converts from a grid position to world position, multiplying the value by the CellWidth and CellHeight of the Grid.
+func (m *Grid) GridToWorld(x, y int) (float64, float64) {
+	rx := float64(x * m.CellWidth)
+	ry := float64(y * m.CellHeight)
+	return rx, ry
+}
+
+// WorldToGrid converts from a grid position to world position, multiplying the value by the CellWidth and CellHeight of the Grid.
+func (m *Grid) WorldToGrid(x, y float64) (int, int) {
+	tx := int(math.Floor(x / float64(m.CellWidth)))
+	ty := int(math.Floor(y / float64(m.CellHeight)))
+	return tx, ty
+}
+
+// GetPathFromCells returns a Path, from the starting Cell to the destination Cell. diagonals controls whether moving diagonally
+// is acceptable when creating the Path. wallsBlockDiagonals indicates whether to allow diagonal movement "through" walls that are
+// positioned diagonally.
+func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonals bool) *Path {
 
 	type Node struct {
 		Cell   *Cell
 		Parent *Node
-		Cost   int
+		Cost   float64
 	}
 
 	openNodes := []*Node{&Node{Cell: dest, Cost: dest.Cost}}
@@ -207,8 +268,8 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
 
 	path := &Path{}
 
-	if !dest.Walkable {
-		return path
+	if !start.Walkable || !dest.Walkable {
+		return nil
 	}
 
 	for {
@@ -276,18 +337,26 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
 		// Do the same thing for diagonals.
 		if diagonals {
 
+			diagonalCost := .414 // Diagonal movement is slightly slower, so we should prioritize straightaways if possible
+
+			up := m.Get(node.Cell.X, node.Cell.Y-1).Walkable
+			down := m.Get(node.Cell.X, node.Cell.Y+1).Walkable
+			left := m.Get(node.Cell.X-1, node.Cell.Y).Walkable
+			right := m.Get(node.Cell.X+1, node.Cell.Y).Walkable
+
 			if node.Cell.X > 0 && node.Cell.Y > 0 {
 				c := m.Get(node.Cell.X-1, node.Cell.Y-1)
-				n := &Node{c, node, c.Cost + node.Cost}
-				if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
+				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (left && up)) {
 					openNodes = append(openNodes, n)
 					checkedNodes = append(checkedNodes, n.Cell)
 				}
 			}
+
 			if node.Cell.X < m.Width()-1 && node.Cell.Y > 0 {
 				c := m.Get(node.Cell.X+1, node.Cell.Y-1)
-				n := &Node{c, node, c.Cost + node.Cost}
-				if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
+				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (right && up)) {
 					openNodes = append(openNodes, n)
 					checkedNodes = append(checkedNodes, n.Cell)
 				}
@@ -295,16 +364,17 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
 
 			if node.Cell.X > 0 && node.Cell.Y < m.Height()-1 {
 				c := m.Get(node.Cell.X-1, node.Cell.Y+1)
-				n := &Node{c, node, c.Cost + node.Cost}
-				if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
+				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (left && down)) {
 					openNodes = append(openNodes, n)
 					checkedNodes = append(checkedNodes, n.Cell)
 				}
 			}
+
 			if node.Cell.X < m.Width()-1 && node.Cell.Y < m.Height()-1 {
 				c := m.Get(node.Cell.X+1, node.Cell.Y+1)
-				n := &Node{c, node, c.Cost + node.Cost}
-				if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
+				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (right && down)) {
 					openNodes = append(openNodes, n)
 					checkedNodes = append(checkedNodes, n.Cell)
 				}
@@ -323,6 +393,22 @@ func (m *Grid) GetPath(start, dest *Cell, diagonals bool) *Path {
 
 	return path
 
+}
+
+// GetPath returns a Path, from the starting world X and Y position to the ending X and Y position. diagonals controls whether
+// moving diagonally is acceptable when creating the Path. wallsBlockDiagonals indicates whether to allow diagonal movement "through" walls
+// that are positioned diagonally. This is essentially just a smoother way to get a Path from GetPathFromCells().
+func (m *Grid) GetPath(startX, startY, endX, endY float64, diagonals bool, wallsBlockDiagonals bool) *Path {
+
+	sx, sy := m.WorldToGrid(startX, startY)
+	sc := m.Get(sx, sy)
+	ex, ey := m.WorldToGrid(endX, endY)
+	ec := m.Get(ex, ey)
+
+	if sc != nil && ec != nil {
+		return m.GetPathFromCells(sc, ec, diagonals, wallsBlockDiagonals)
+	}
+	return nil
 }
 
 // DataAsStringArray returns a 2D array of runes for each Cell in the Grid. The first axis is the Y axis.
@@ -357,41 +443,6 @@ func (m *Grid) DataAsRuneArrays() [][]rune {
 
 }
 
-// NewGridFromStringArrays creates a Grid map from a 1D array of strings. Each string becomes a row of Cells, each
-// with one rune as its character.
-func NewGridFromStringArrays(arrays []string) *Grid {
-
-	m := &Grid{}
-
-	for y := 0; y < len(arrays); y++ {
-		m.Data = append(m.Data, []*Cell{})
-		stringLine := []rune(arrays[y])
-		for x := 0; x < len(arrays[y]); x++ {
-			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Rune: stringLine[x]})
-		}
-	}
-
-	return m
-
-}
-
-// NewGridFromRuneArrays creates a Grid map from a 2D array of runes. Each individual Rune becomes a Cell in the resulting
-// Grid.
-func NewGridFromRuneArrays(arrays [][]rune) *Grid {
-
-	m := &Grid{}
-
-	for y := 0; y < len(arrays); y++ {
-		m.Data = append(m.Data, []*Cell{})
-		for x := 0; x < len(arrays[y]); x++ {
-			m.Data[y] = append(m.Data[y], &Cell{X: x, Y: y, Cost: 1, Walkable: true, Rune: arrays[y][x]})
-		}
-	}
-
-	return m
-
-}
-
 // A Path is a struct that represents a path, or sequence of Cells from point A to point B. The Cells list is the list of Cells contained in the Path,
 // and the CurrentIndex value represents the current step on the Path. Using Path.Next() and Path.Prev() advances and walks back the Path by one step.
 type Path struct {
@@ -399,31 +450,10 @@ type Path struct {
 	CurrentIndex int
 }
 
-// Valid returns if the path is valid (has a length greater than 0).
-func (p *Path) Valid() bool {
-	return len(p.Cells) > 0
-}
-
-// Start returns the starting Cell of the Path (or nil, if the Path isn't valid).
-func (p *Path) Start() *Cell {
-	if p.Valid() {
-		return p.Cells[0]
-	}
-	return nil
-}
-
-// End returns the ending Cell of the Path (or nil, if the Path isn't valid).
-func (p *Path) End() *Cell {
-	if p.Valid() {
-		return p.Cells[len(p.Cells)-1]
-	}
-	return nil
-}
-
 // TotalCost returns the total cost of the Path (i.e. is the sum of all of the Cells in the Path).
-func (p *Path) TotalCost() int {
+func (p *Path) TotalCost() float64 {
 
-	cost := 0
+	cost := 0.0
 	for _, cell := range p.Cells {
 		cost += cell.Cost
 	}
@@ -431,7 +461,7 @@ func (p *Path) TotalCost() int {
 
 }
 
-// Reverse reverses the Path.
+// Reverse reverses the Cells in the Path.
 func (p *Path) Reverse() {
 
 	np := []*Cell{}
@@ -441,8 +471,6 @@ func (p *Path) Reverse() {
 	}
 
 	p.Cells = np
-
-	// p.Restart()
 
 }
 
@@ -454,45 +482,43 @@ func (p *Path) Restart() {
 // Current returns the current Cell in the Path.
 func (p *Path) Current() *Cell {
 	return p.Cells[p.CurrentIndex]
+
 }
 
-// Next advances the path by one cell and returns the current cell in the path (i.e. the next cell).
+// Next returns the next cell in the path. If the Path is at the end, Next() returns nil.
 func (p *Path) Next() *Cell {
+
+	if p.CurrentIndex < len(p.Cells)-1 {
+		return p.Cells[p.CurrentIndex+1]
+	}
+	return nil
+
+}
+
+// Advance advances the path by one cell.
+func (p *Path) Advance() {
 
 	p.CurrentIndex++
 	if p.CurrentIndex >= len(p.Cells) {
 		p.CurrentIndex = len(p.Cells) - 1
 	}
 
-	return p.Cells[p.CurrentIndex]
-
 }
 
-// Prev runs the path backwards by one cell and returns the current cell in the path (i.e. the previous cell).
+// Prev returns the previous cell in the path. If the Path is at the start, Prev() returns nil.
 func (p *Path) Prev() *Cell {
 
-	p.CurrentIndex--
-	if p.CurrentIndex < 0 {
-		p.CurrentIndex = 0
+	if p.CurrentIndex > 0 {
+		return p.Cells[p.CurrentIndex-1]
 	}
+	return nil
 
-	return p.Cells[p.CurrentIndex]
-}
-
-// AtEnd returns if the current Cell in the Path is the last one.
-func (p *Path) AtEnd() bool {
-	return p.Valid() && p.CurrentIndex == len(p.Cells)-1
-}
-
-// AtBeginning returns if the current Cell in the Path is the first one.
-func (p *Path) AtBeginning() bool {
-	return p.Valid() && p.CurrentIndex == 0
 }
 
 // Same returns if the Path shares the exact same cells as the other specified Path.
 func (p *Path) Same(otherPath *Path) bool {
 
-	if len(p.Cells) != len(otherPath.Cells) {
+	if p == nil || otherPath == nil || len(p.Cells) != len(otherPath.Cells) {
 		return false
 	}
 
@@ -504,4 +530,53 @@ func (p *Path) Same(otherPath *Path) bool {
 
 	return true
 
+}
+
+// Length returns the length of the Path (how many Cells are in the Path).
+func (p *Path) Length() int {
+	return len(p.Cells)
+}
+
+// Get returns the Cell of the specified index in the Path. If the index is outside of the
+// length of the Path, it returns -1.
+func (p *Path) Get(index int) *Cell {
+	if index < len(p.Cells) {
+		return p.Cells[index]
+	}
+	return nil
+}
+
+// Index returns the index of the specified Cell in the Path. If the Cell isn't contained
+// in the Path, it returns -1.
+func (p *Path) Index(cell *Cell) int {
+	for i, c := range p.Cells {
+		if c == cell {
+			return i
+		}
+	}
+	return -1
+}
+
+// SetIndex sets the index of the Path, allowing you to safely manually manipulate the Path
+// as necessary. If the index exceeds the bounds of the Path, it will be clamped.
+func (p *Path) SetIndex(index int) {
+
+	if index >= len(p.Cells) {
+		p.CurrentIndex = len(p.Cells) - 1
+	} else if index < 0 {
+		p.CurrentIndex = 0
+	} else {
+		p.CurrentIndex = index
+	}
+
+}
+
+// AtStart returns if the Path's current index is 0, the first Cell in the Path.
+func (p *Path) AtStart() bool {
+	return p.CurrentIndex == 0
+}
+
+// AtEnd returns if the Path's current index is the last Cell in the Path.
+func (p *Path) AtEnd() bool {
+	return p.CurrentIndex >= len(p.Cells)-1
 }

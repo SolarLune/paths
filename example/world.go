@@ -80,12 +80,12 @@ func (pd *PathDrawer) Draw() {
 
 	if tc != nil {
 
-		newPath := pd.World.GameMap.GetPath(sc, tc, false)
+		newPath := pd.World.GameMap.GetPathFromCells(sc, tc, false)
 		if !newPath.Same(pd.Path) {
 			pd.Path = newPath
 		}
 
-		if pd.Path.Valid() {
+		if pd.Path != nil {
 			for i, c := range pd.Path.Cells {
 				renderer.SetDrawColor(255-uint8(i*8%100), 255-uint8(i*8%100), 0, 255)
 				renderer.FillRect(&sdl.Rect{int32(c.X * 16), int32(c.Y * 16), 16, 16})
@@ -132,10 +132,10 @@ func (world *World1) Create() {
 		"xxxxxxxxxxxxxxxx                ",
 	}
 
-	world.GameMap = paths.NewGridFromStringArrays(layout)
+	world.GameMap = paths.NewGridFromStringArrays(layout, 16, 16)
 
-	spawn := world.GameMap.GetCellsByRune('f')[0]
-	for _, cell := range world.GameMap.GetCellsByRune('x') {
+	spawn := world.GameMap.CellsByRune('f')[0]
+	for _, cell := range world.GameMap.CellsByRune('x') {
 		cell.Walkable = false
 	}
 	world.PathDrawer = NewPathDrawer(spawn.X*16, spawn.Y*16, world)
@@ -175,7 +175,7 @@ func (world *World1) Draw() {
 		}
 
 		pathInfo := "Path cost: No path"
-		if world.PathDrawer.Path.Valid() {
+		if world.PathDrawer.Path != nil {
 			pathInfo = fmt.Sprintf("Path cost: %d", world.PathDrawer.Path.TotalCost())
 		}
 
