@@ -253,17 +253,11 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 
 	openNodes := []*Node{&Node{Cell: dest, Cost: dest.Cost}}
 
-	checkedNodes := make([]*Cell, 0)
+	checkedNodes := make(map[*Cell]struct{})
 
 	hasBeenAdded := func(cell *Cell) bool {
-
-		for _, c := range checkedNodes {
-			if cell == c {
-				return true
-			}
-		}
-		return false
-
+		_, ok := checkedNodes[cell]
+		return ok
 	}
 
 	path := &Path{}
@@ -287,7 +281,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 		if node.Cell == start {
 
 			var t = node
-			for true {
+			for {
 				path.Cells = append(path.Cells, t.Cell)
 				t = t.Parent
 				if t == nil {
@@ -305,7 +299,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 			n := &Node{c, node, c.Cost + node.Cost}
 			if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
 				openNodes = append(openNodes, n)
-				checkedNodes = append(checkedNodes, n.Cell)
+				checkedNodes[n.Cell] = struct{}{}
 			}
 		}
 		if node.Cell.X < m.Width()-1 {
@@ -313,7 +307,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 			n := &Node{c, node, c.Cost + node.Cost}
 			if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
 				openNodes = append(openNodes, n)
-				checkedNodes = append(checkedNodes, n.Cell)
+				checkedNodes[n.Cell] = struct{}{}
 			}
 		}
 
@@ -322,7 +316,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 			n := &Node{c, node, c.Cost + node.Cost}
 			if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
 				openNodes = append(openNodes, n)
-				checkedNodes = append(checkedNodes, n.Cell)
+				checkedNodes[n.Cell] = struct{}{}
 			}
 		}
 		if node.Cell.Y < m.Height()-1 {
@@ -330,7 +324,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 			n := &Node{c, node, c.Cost + node.Cost}
 			if n.Cell.Walkable && !hasBeenAdded(n.Cell) {
 				openNodes = append(openNodes, n)
-				checkedNodes = append(checkedNodes, n.Cell)
+				checkedNodes[n.Cell] = struct{}{}
 			}
 		}
 
@@ -349,7 +343,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
 				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (left && up)) {
 					openNodes = append(openNodes, n)
-					checkedNodes = append(checkedNodes, n.Cell)
+					checkedNodes[n.Cell] = struct{}{}
 				}
 			}
 
@@ -358,7 +352,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
 				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (right && up)) {
 					openNodes = append(openNodes, n)
-					checkedNodes = append(checkedNodes, n.Cell)
+					checkedNodes[n.Cell] = struct{}{}
 				}
 			}
 
@@ -367,7 +361,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
 				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (left && down)) {
 					openNodes = append(openNodes, n)
-					checkedNodes = append(checkedNodes, n.Cell)
+					checkedNodes[n.Cell] = struct{}{}
 				}
 			}
 
@@ -376,7 +370,7 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 				n := &Node{c, node, c.Cost + node.Cost + diagonalCost}
 				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (right && down)) {
 					openNodes = append(openNodes, n)
-					checkedNodes = append(checkedNodes, n.Cell)
+					checkedNodes[n.Cell] = struct{}{}
 				}
 			}
 
