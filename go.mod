@@ -1,4 +1,4 @@
-module github.com/SolarLune/paths
+module github.com/tomknightdev/paths
 
 go 1.14
 
