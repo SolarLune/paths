@@ -80,7 +80,7 @@ func (pd *PathDrawer) Draw() {
 
 	if tc != nil {
 
-		newPath := pd.World.GameMap.GetPathFromCells(sc, tc, false)
+		newPath := pd.World.GameMap.GetPathFromCells(sc, tc, false, true)
 		if !newPath.Same(pd.Path) {
 			pd.Path = newPath
 		}
