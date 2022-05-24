@@ -1,4 +1,4 @@
-module github.com/solarlune/paths
+module github.com/OpenSauce/paths
 
 go 1.14
 
