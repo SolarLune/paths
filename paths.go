@@ -397,6 +397,200 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 
 }
 
+func ManhattenDistance(start, dest *Cell) float64 {
+	dx := math.Abs(float64(start.X - dest.X))
+	dy := math.Abs(float64(start.Y - dest.Y))
+	return 1 * (dx + dy)
+}
+
+func DiaganalDistance(start, dest *Cell) float64 {
+	dx := math.Abs(float64(start.X - dest.X))
+	dy := math.Abs(float64(start.Y - dest.Y))
+	return 1*(dx+dy) + (.414-2*1)*math.Min(dx, dy)
+}
+
+// GetPathFromCellsAStar returns a Path, from the starting Cell to the destination Cell. diagonals controls whether moving diagonally
+// is acceptable when creating the Path. wallsBlockDiagonals indicates whether to allow diagonal movement "through" walls that are
+// positioned diagonally.
+func (m *Grid) GetPathFromCellsAStar(start, dest *Cell, diagonals, wallsBlockDiagonals bool) *Path {
+
+	openNodes := minHeap{}
+	heap.Push(&openNodes, &Node{Cell: dest, Cost: dest.Cost})
+
+	costSoFar := map[*Cell]float64{}
+	hasBeenAdded := func(cell *Cell) bool {
+
+		_, ok := costSoFar[cell]
+		return ok
+
+	}
+
+	costSoFar[dest] = 0
+	path := &Path{}
+
+	if !start.Walkable || !dest.Walkable {
+		return nil
+	}
+
+	for {
+
+		// If the list of openNodes (nodes to check) is at 0, then we've checked all Nodes, and so the function can quit.
+		if len(openNodes) == 0 {
+			break
+		}
+
+		current := heap.Pop(&openNodes).(*Node)
+
+		// If we've reached the start, then we've constructed our Path going from the destination to the start; we just have
+		// to loop through each Node and go up, adding it and its parents recursively to the path.
+		if current.Cell == start {
+
+			var t = current
+			for {
+				path.Cells = append(path.Cells, t.Cell)
+				t = t.Parent
+				if t == nil {
+					break
+				}
+			}
+
+			break
+		}
+
+		// Otherwise, we add the current node's neighbors to the list of cells to check, and list of cells that have already been
+		// checked (so we don't get nodes being checked multiple times).
+		if current.Cell.X > 0 {
+			c := m.Get(current.Cell.X-1, current.Cell.Y)
+			newCost := costSoFar[current.Cell] + c.Cost
+			if c.Walkable && (!hasBeenAdded(c) || newCost < costSoFar[c]) {
+				n := &Node{c, current, newCost}
+				costSoFar[n.Cell] = newCost
+				priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+				n.Cost = priority
+				heap.Push(&openNodes, n)
+			}
+		}
+
+		if current.Cell.X < m.Width()-1 {
+			c := m.Get(current.Cell.X+1, current.Cell.Y)
+			newCost := costSoFar[current.Cell] + c.Cost
+			n := &Node{c, current, newCost}
+			if n.Cell.Walkable && (!hasBeenAdded(n.Cell) || newCost < costSoFar[n.Cell]) {
+				costSoFar[n.Cell] = newCost
+				priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+				n.Cost = priority
+				heap.Push(&openNodes, n)
+			}
+		}
+
+		if current.Cell.Y > 0 {
+			c := m.Get(current.Cell.X, current.Cell.Y-1)
+			newCost := costSoFar[current.Cell] + c.Cost
+			n := &Node{c, current, newCost}
+			if n.Cell.Walkable && (!hasBeenAdded(n.Cell) || newCost < costSoFar[n.Cell]) {
+				costSoFar[n.Cell] = newCost
+				priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+				n.Cost = priority
+				heap.Push(&openNodes, n)
+			}
+		}
+		if current.Cell.Y < m.Height()-1 {
+			c := m.Get(current.Cell.X, current.Cell.Y+1)
+			newCost := costSoFar[current.Cell] + c.Cost
+			n := &Node{c, current, newCost}
+			if n.Cell.Walkable && (!hasBeenAdded(n.Cell) || newCost < costSoFar[n.Cell]) {
+				costSoFar[n.Cell] = newCost
+				priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+				n.Cost = priority
+				heap.Push(&openNodes, n)
+			}
+		}
+
+		// Do the same thing for diagonals.
+		if diagonals {
+
+			diagonalCost := .414 // Diagonal movement is slightly slower, so we should prioritize straightaways if possible
+
+			upCell := m.Get(current.Cell.X, current.Cell.Y-1)
+			up := false
+			if upCell != nil {
+				up = upCell.Walkable
+			}
+
+			downCell := m.Get(current.Cell.X, current.Cell.Y+1)
+			down := false
+			if downCell != nil {
+				down = downCell.Walkable
+			}
+
+			leftCell := m.Get(current.Cell.X-1, current.Cell.Y)
+			left := false
+			if leftCell != nil {
+				left = leftCell.Walkable
+			}
+
+			rightCell := m.Get(current.Cell.X+1, current.Cell.Y)
+			right := false
+			if rightCell != nil {
+				right = rightCell.Walkable
+			}
+
+			if current.Cell.X > 0 && current.Cell.Y > 0 {
+				c := m.Get(current.Cell.X-1, current.Cell.Y-1)
+				newCost := costSoFar[current.Cell] + c.Cost + diagonalCost
+				n := &Node{c, current, newCost}
+				if n.Cell.Walkable && (!hasBeenAdded(n.Cell) || newCost < costSoFar[n.Cell]) && (!wallsBlockDiagonals || (left && up)) {
+					costSoFar[n.Cell] = newCost
+					priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+					n.Cost = priority
+					heap.Push(&openNodes, n)
+				}
+			}
+
+			if current.Cell.X < m.Width()-1 && current.Cell.Y > 0 {
+				c := m.Get(current.Cell.X+1, current.Cell.Y-1)
+				newCost := costSoFar[current.Cell] + c.Cost + diagonalCost
+				n := &Node{c, current, newCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (right && up)) {
+					costSoFar[n.Cell] = newCost
+					priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+					n.Cost = priority
+					heap.Push(&openNodes, n)
+				}
+			}
+
+			if current.Cell.X > 0 && current.Cell.Y < m.Height()-1 {
+				c := m.Get(current.Cell.X-1, current.Cell.Y+1)
+				newCost := costSoFar[current.Cell] + c.Cost + diagonalCost
+				n := &Node{c, current, newCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (left && down)) {
+					costSoFar[n.Cell] = newCost
+					priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+					n.Cost = priority
+					heap.Push(&openNodes, n)
+				}
+			}
+
+			if current.Cell.X < m.Width()-1 && current.Cell.Y < m.Height()-1 {
+				c := m.Get(current.Cell.X+1, current.Cell.Y+1)
+				newCost := costSoFar[current.Cell] + c.Cost + diagonalCost
+				n := &Node{c, current, newCost}
+				if n.Cell.Walkable && !hasBeenAdded(n.Cell) && (!wallsBlockDiagonals || (right && down)) {
+					costSoFar[n.Cell] = newCost
+					priority := newCost + float64(DiaganalDistance(current.Cell, n.Cell))
+					n.Cost = priority
+					heap.Push(&openNodes, n)
+				}
+			}
+
+		}
+
+	}
+
+	return path
+
+}
+
 // GetPath returns a Path, from the starting world X and Y position to the ending X and Y position. diagonals controls whether
 // moving diagonally is acceptable when creating the Path. wallsBlockDiagonals indicates whether to allow diagonal movement "through" walls
 // that are positioned diagonally. This is essentially just a smoother way to get a Path from GetPathFromCells().
