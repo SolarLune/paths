@@ -21,7 +21,7 @@ Because I needed to do pathfinding for a game and couldn't really find any pre-m
 
 Just go get it:
 
-`go get github.com/SolarLune/paths`
+`go get github.com/solarlune/paths`
 
 ## How do I use it?
 
