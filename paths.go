@@ -333,10 +333,30 @@ func (m *Grid) GetPathFromCells(start, dest *Cell, diagonals, wallsBlockDiagonal
 
 			diagonalCost := .414 // Diagonal movement is slightly slower, so we should prioritize straightaways if possible
 
-			up := m.Get(node.Cell.X, node.Cell.Y-1).Walkable
-			down := m.Get(node.Cell.X, node.Cell.Y+1).Walkable
-			left := m.Get(node.Cell.X-1, node.Cell.Y).Walkable
-			right := m.Get(node.Cell.X+1, node.Cell.Y).Walkable
+			up := false
+			upNeighbor := m.Get(node.Cell.X, node.Cell.Y-1)
+			if upNeighbor != nil && upNeighbor.Walkable {
+				up = true
+			}
+
+			down := false
+			downNeighbor := m.Get(node.Cell.X, node.Cell.Y+1)
+			if downNeighbor != nil && downNeighbor.Walkable {
+				down = true
+			}
+
+			left := false
+			leftNeighbor := m.Get(node.Cell.X-1, node.Cell.Y)
+			if leftNeighbor != nil && leftNeighbor.Walkable {
+				up = true
+			}
+
+			right := false
+			rightNeighbor := m.Get(node.Cell.X+1, node.Cell.Y)
+			if rightNeighbor != nil && rightNeighbor.Walkable {
+				right = true
+			}
+
 
 			if node.Cell.X > 0 && node.Cell.Y > 0 {
 				c := m.Get(node.Cell.X-1, node.Cell.Y-1)
